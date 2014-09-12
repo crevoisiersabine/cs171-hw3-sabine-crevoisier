@@ -18,7 +18,7 @@
     bbVis = {
         x: 0 + 10,
         y: 10,
-        w: width - 100,
+        w: width - 150,
         h: 400
     };
 
@@ -40,18 +40,53 @@
             return {
               name: name,
               values: data.map(function(d) {
-                if (+d[name] != 0) { return {date: d.Year, population: +d[name]}; }
+                // if (+d[name] != 0) { 
+                return {date: d.Year, population: +d[name]}; 
+                // }
               })
             };
           });
-        //Define a function to remove the values corresponding to the empty cells in the wikipedia table
-        function isNotUndefined(element) {
-          return element != undefined;
-        }
+
+        //Interpolate for undefined points
         dataSet.forEach(function(d){
-            d.values = d.values.filter(isNotUndefined);
+            if (d.name == "USCensus"){
+                d.values = d.values.filter(isZero) //Remove the zero element for US Census as cannot interpolate as no starting point
+            }
+            // For other models can carry out the interpolation
+            else {
+                //Get the interpolation scale for each model
+                model_scale = interpolate(d.values)
+                d.values.forEach(function(k){
+                    if (k.population == 0) {
+                        k.population = model_scale(k.date);
+                        k.model = "interpolation"
+                    }
+                })
+            }
         })
-        
+
+        console.log(dataSet)
+
+        //Define a function to remove the values corresponding to the empty cells in the wikipedia table
+        function isZero(element) {
+          return element.population != 0;
+        }
+
+        //Build the interpolation scale
+        function interpolate(element) {
+            domain_scale = []
+            range_scale = []
+            element.forEach(function(d){
+                if(d.population != 0){
+                    domain_scale.push(parseInt(d.date));
+                    range_scale.push(d.population);
+                }
+            })
+            return d3.scale.linear().domain(domain_scale).range(range_scale);
+        }
+
+        console.log(dataSet);
+
         return createVis();
     });
 
@@ -65,7 +100,7 @@
 
           // x, y scales
           xScale = d3.scale.linear().range([0, bbVis.w]);  // define the right domain generically
-          xScale.domain(d3.extent(dataSet[1].values, function(d) { return d.date }));
+          xScale.domain([0, 2050])
 
           yScale = d3.scale.linear().range([bbVis.h, 0])  // define the right y domain and range -- use bbVis
           yScale.domain([
@@ -102,7 +137,7 @@
               .style("text-anchor", "middle")
               .text("Years");
 
-        // Creare the line generator for the path element
+        // Create the line generator for the path element
           var line = d3.svg.line()
             .interpolate("cardinal")
             .x(function(d) { return xScale(d.date); })
@@ -128,10 +163,32 @@
             .data(dataSet[i].values)
             .enter().append("svg:circle")
             .attr("transform", "translate(100, 50)")
-            .attr("fill", function(d, i) { return color(col); })
+            .attr("fill", function(d, i) { 
+                if (d.model) {
+                    return  "black";
+                }
+                else {
+                    return color(col);
+                }
+            })
+            .attr("opacity", function(d, i) { 
+                if (d.model) {
+                    return  0.5;
+                }
+                else {
+                    return 1; 
+                }
+            })
             .attr("cx", function(d, i) { return xScale(d.date); })
             .attr("cy", function(d, i) { return yScale(d.population); })
-            .attr("r", function(d, i) { return 1.5; });
+            .attr("r", function(d, i) { 
+                if (d.model) {
+                    return  1.5;
+                }
+                else {
+                    return 2; 
+                }
+            });
         }
 
     };
