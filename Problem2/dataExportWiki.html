@@ -18,18 +18,33 @@
         type: 'GET',
         cache: false,
         success: function(data) {
-            var root,allData, body, table;
+            var root, allData, body, table;
+            //Create an empty div
             root = $("<div></div>")
+            //Place the textual form of the data which comes from the get request to the url given
             root.html(data.responseText)
 
-            var content = root.find("#content"); // find all the nodes that have ID "content"
-            var h2s = content.find(".mw-headline"); // search in all "content" nodes for nodes of class ".mw-headline"
+            var rows = root.find(".wikitable tbody tr:gt(13):lt(141)"); //Only from positive years
 
-            $.each(h2s, function(index, value) {
-                console.log($(value).text()); // print text
+            desired_rows = []; //create an array with rows that we want from the table
+            $.each(rows, function(i, row) {
+                trunk_rows = $(row).find("td:lt(6)");
+                new_string = "";
+                $.each(trunk_rows, function(j, tkr) {
+
+                  if ($(tkr).text()) {new_string = new_string + String(convertToInt($(tkr).text())) + "," ; }
+                  else {new_string += ","; }
+                })
+                desired_rows.push(new_string.substring(0,new_string.length - 1));
             });
+
+            //Create the full array by concatenating the header array and the array of values from the table
+            full = ["Year,USCensus,PopulationBureau,UN,HYDE,Maddison"];
+            full = full.concat(desired_rows);
+
+            console.log(full);
 			
-			saveToFile(["Hello World"],"test.txt")
+			saveToFile(full,"wikipedia.txt");
         },
         error: function() {
             return console.log("error");
@@ -62,9 +77,6 @@
      String.prototype.endsWith = function(suffix) {
        return this.indexOf(suffix, this.length - suffix.length) !== -1;
      };
-	
-
-
 
 </script>
 
