@@ -4,6 +4,22 @@
     <title></title>
     <script src="../libs/d3.v3.min.js"></script>
     <style>
+        .overlay {
+          fill: none;
+          pointer-events: all;
+        }
+
+        rect.pane {
+          cursor: move;
+          fill: none;
+          pointer-events: all;
+        }
+
+        .focus circle {
+          fill: none;
+          stroke: steelblue;
+        }
+
         .axis path,
         .axis line {
             fill: none;
