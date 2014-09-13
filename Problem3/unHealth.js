@@ -59,6 +59,12 @@ createVis = function() {
     var xAxis_o, xScale_o, yAxis_o,  yScale_o;
     var xAxis, xScale, yAxis,  yScale;
     var customTimeFormat = d3.time.format.multi([
+      [".%L", function(d) { return d.getMilliseconds(); }],
+      [":%S", function(d) { return d.getSeconds(); }],
+      ["%I:%M", function(d) { return d.getMinutes(); }],
+      ["%I %p", function(d) { return d.getHours(); }],
+      ["%a %d", function(d) { return d.getDay() && d.getDate() != 1; }],
+      ["%b %d", function(d) { return d.getDate() != 1; }],
       ["%B", function(d) { return d.getMonth(); }],
       ["%Y", function() { return true; }]
     ]);
@@ -83,7 +89,7 @@ createVis = function() {
     ]);
 
     // x, y axes overview
-    xAxis_o = d3.svg.axis().scale(xScale_o).orient("bottom").ticks(10).tickFormat(customTimeFormat);
+    xAxis_o = d3.svg.axis().scale(xScale_o).orient("bottom").tickFormat(customTimeFormat);
     yAxis_o = d3.svg.axis().scale(yScale_o).orient("left").ticks(4);
 
     overview.append("g")
@@ -115,7 +121,7 @@ createVis = function() {
     ]);
 
     // x, y axes detail
-    xAxis_d = d3.svg.axis().scale(xScale_d).orient("bottom").ticks(10).tickFormat(customTimeFormat);
+    xAxis_d = d3.svg.axis().scale(xScale_d).orient("bottom").tickFormat(customTimeFormat);
     yAxis_d = d3.svg.axis().scale(yScale_d).orient("left").ticks(4);
 
     detail.append("g")
@@ -161,8 +167,7 @@ createVis = function() {
     // Create a line corresponding to the data
     health.append("path")
         .attr("class", "path overviewPath")
-        .attr("d", function(d) { return line_o(d); })
-        // .style("stroke", function(d) { return color(d.name); });
+        .attr("d", function(d) { return line_o(d); });
 
     //POINTS OVERVIEW
 
@@ -180,17 +185,19 @@ createVis = function() {
     // Create a variable health and append a g for each prediction model
     var health_d = detail.selectAll(".health_d")
         .data(dataSet)
-        .enter().append("g")
-        .attr("class", "health_d");
+        .enter()
+
     // Create a line corresponding to the data
     health_d.append("path")
         .attr("class", "path detailPath")
-        .attr("d", function(d) { return line_d(d); })
-        // .style("stroke", function(d) { return color(d.name); });
+        .attr("clip-path", "url(#clip)") //Adding this attribute says to clip this element
+        .attr("d", line_d)
+
     // Fill the space
     health_d.append("path")
         .attr("class", "detailArea")
-        .attr("d", function(d) { return area(d); })
+        .attr("clip-path", "url(#clip)") //Adding this attribute says to clip this element
+        .attr("d", area)
 
     //POINTS DETAIL
 
@@ -198,10 +205,35 @@ createVis = function() {
             .data(dataSet[0])
             .enter().append("circle")
             .attr("class", "point_d")
+            .attr("clip-path", "url(#clip)") //Adding this attribute says to clip this element
             .attr("fill", function(d, i) { return  "steelblue"; })
             .attr("cx", function(d, i) { return xScale_d(d.date); })
             .attr("cy", function(d, i) { return yScale_d(d.health); })
-            .attr("r", function(d, i) { return  1.5; });
+            .attr("r", function(d, i) { return  2; });
 
+    //BRUSHING !!
+    //This piece of code below clips the graph so that it doesn't go over the edges of the axis during brushing
+    svg.append("defs").append("clipPath")
+        .attr("id", "clip")
+        .append("rect")
+        .attr("width", width)
+        .attr("height", height);
+
+    var brush = d3.svg.brush().x(xScale_o).on("brush", brushed);
+    overview.append("g").attr("class", "brush")
+        .call(brush)
+        .selectAll("rect")
+        .attr({ height: bbOverview.h, transform: "translate(0, 0)" });
+
+    function brushed() {
+        //Check if the brush is selected, if so, give the extent as the new domain for the detail graph, if not keep full domain from overview
+        xScale_d.domain(brush.empty() ? xScale_o.domain() : brush.extent());
+        detail.select(".detailArea").attr("d", area);
+        detail.selectAll(".detailPath").attr("d", line_d);
+        detail.selectAll(".point_d")
+            .attr("cx", function(d) { return xScale_d(d.date); })
+            .attr("cy", function(d) { return yScale_d(d.health); });
+        detail.select("g.x.axis.detail").call(xAxis_d);
+    }
 }
 
