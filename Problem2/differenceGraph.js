@@ -1,26 +1,19 @@
 /**
  * Created by crevoisiersabine on 9/12/14.
  */
-    var bbVis, brush, createVis, dataSet, handle, height, margin, svg, svg2, width;
+    var brush, createVis, dataSet, handle, height, margin, svg, width;
     var color = d3.scale.category10();
 
     margin = {
         top: 10,
         right: 50,
-        bottom: 10,
+        bottom: 50,
         left: 50
     };
 
     width = 960 - margin.left - margin.right;
 
     height = 600 - margin.bottom - margin.top;
-
-    bbVis = {
-        x: 0 + 10,
-        y: 10,
-        w: width - 150,
-        h: 400
-    };
 
     dataSet = [];
 
@@ -106,7 +99,7 @@
         })
 
         for(var key in average_dict){
-          if (key <= 1950){
+          if (key < 1950){
             average_dict[key] = average_dict[key] / 4
           }
           else{
@@ -138,15 +131,11 @@
     createVis = function() {
       var xAxis, xScale, yAxis,  yScale;
 
-		  // example that translates to the bottom left of our vis space:
-		  var visFrame = svg.append("g")
-          .attr({ "transform": "translate(" + bbVis.x + "," + (bbVis.y) + ")" });
-
           // x, y scales
-          xScale = d3.scale.linear().range([0, bbVis.w]);  // define the right domain generically
+          xScale = d3.scale.linear().range([0, width]);  // define the right domain generically
           xScale.domain([0, 2050]);
 
-          yScale = d3.scale.log().range([bbVis.h, 0])  // define the right y domain and range -- use bbVis
+          yScale = d3.scale.log().range([height, 0])  // define the right y domain and range -- use bbVis
           yScale.domain([
             d3.min(dataSet, function(c) { return d3.min(c.values, function(v) { return v.population; }); }),
             d3.max(dataSet, function(c) { return d3.max(c.values, function(v) { return v.population; }); })
@@ -156,28 +145,26 @@
           xAxis = d3.svg.axis().scale(xScale).orient("bottom");
           yAxis = d3.svg.axis().scale(yScale).orient("left");
 
-          visFrame.append("g")
+          svg.append("g")
               .attr("class", "x axis")
-              .attr("transform", "translate(100, 450)")
+              .attr("transform", "translate(0, " + height + ")")
               .call(xAxis);
 
-          visFrame.append("g")
+          svg.append("g")
               .attr("class", "y axis")
-              .attr("transform", "translate(100, 50)")
               .call(yAxis);
 
         // Add the text label for the Y axis
-          visFrame.append("text")
+          svg.append("text")
               .attr("transform", "rotate(-90)")
-              .attr("x", 0 - margin.left)
               .attr("dy", "1em")
               .attr("font-weight", "bold")
               .style("text-anchor", "end")
               .text("Log(Population)");
 
         // Add the text label for the X axis
-          visFrame.append("text")
-              .attr("y", height - 50)
+          svg.append("text")
+              .attr("y", height + margin.bottom)
               .attr("x", (width + 100)/2)
               .style("text-anchor", "middle")
               .attr("font-weight", "bold")
@@ -190,7 +177,7 @@
           .y(function(d) { return yScale(d.population); });
 
         // Create a variable population and append a g for each prediction model
-        var population = visFrame.selectAll(".population")
+        var population = svg.selectAll(".population")
           .data(dataSet)
           .enter().append("g")
           .attr("class", "population");
@@ -199,12 +186,11 @@
         population.append("path")
           .attr("class", "line")
           .attr("d", function(d) { return line(d.values); })
-          .attr("transform", "translate(100, 50)")
           .style("stroke", function(d) { return color(d.name); })
           .style("opacity", 0.3);
 
         // Create a variable population and append a g for each prediction model
-        var average = visFrame.selectAll(".average")
+        var average = svg.selectAll(".average")
             .data(dataSet_average)
             .enter().append("g")
             .attr("class", "average");
@@ -213,7 +199,6 @@
         average.append("path")
           .attr("class", "line")
           .attr("d", function(d) { return line(d.values); })
-          .attr("transform", "translate(100, 50)")
           .style("stroke", "blue");
 
         var area = d3.svg.area()
@@ -222,14 +207,13 @@
           .y1(function(d) { return yScale(d.max); });
 
         //Draw the streamgraph to illustrate the error
-        var stream = visFrame.selectAll(".stream")
+        var stream = svg.selectAll(".stream")
           .data(new_structure_streamgraph_correct_structure)
           .enter().append("g")
           .attr("class", "stream");
           
         stream.append("path")
           .attr("class", "area")
-          .attr("transform", "translate(100, 50)")
           .attr("d", function(d) { return area(d.values) })
           .style("fill", function() { return "cyan" })
           .style("opacity", 0.2);
@@ -237,10 +221,10 @@
         //Put points on the graph, colourcoded
         for(var i = 0; i < dataSet.length; i++){
           var col = dataSet[i].name;
-          var points = visFrame.selectAll(".point")
+          var points = svg.selectAll(".point")
             .data(dataSet[i].values)
-            .enter().append("svg:circle")
-            .attr("transform", "translate(100, 50)")
+            .enter().append("circle")
+            .attr("class", "dot")
             .attr("fill", function(d, i) { 
                 if (d.model) {
                     return  "black";
@@ -273,23 +257,21 @@
         var zoom = d3.behavior.zoom()
           .on("zoom", draw);
 
-        var focus = visFrame.append("g")
+        var focus = svg.append("g")
             .attr("class", "focus")
             .style("display", "none");
 
         var bisectDate = d3.bisector(function(d) { return d.date; }).left;
 
         focus.append("circle")
-            .attr("transform", "translate(100, 50)")
             .attr("r", 4.5);
 
         focus.append("text")
-            .attr("transform", "translate(100, 50)")
             .attr("x", 9)
             .attr("dy", ".35em");
 
         function mousemove() {
-          var x0 = xScale.invert(d3.mouse(this)[0]) - 280 // ? why 280....not sure, hacky to make sure it lines up properly
+          var x0 = xScale.invert(d3.mouse(this)[0])
               i = bisectDate(new_structure.values, x0, 1),
               d0 = new_structure.values[i - 1],
               d1 = new_structure.values[i],
@@ -299,20 +281,20 @@
         }
 
         function draw() {
-          visFrame.select("g.x.axis").call(xAxis);
-          visFrame.select("g.y.axis").call(yAxis);
-          visFrame.select("path.area").attr("d", function(d) {
+          svg.select("g.x.axis").call(xAxis);
+          svg.select("g.y.axis").call(yAxis);
+          svg.select("path.area").attr("d", function(d) {
             return area(d.values)
           });
-          visFrame.selectAll("path.line").attr("d", function(d) {
+          svg.selectAll("path.line").attr("d", function(d) {
             return line(d.values)
           });
-          visFrame.selectAll("circle")
+          svg.selectAll(".dot")
             .attr("cx", function(d) { return xScale(d.date); })
             .attr("cy", function(d) { return yScale(d.population); })
           }
 
-        visFrame.append("rect")
+        svg.append("rect")
           .attr("class", "pane")
           .attr("width", width)
           .attr("height", height)
@@ -322,4 +304,5 @@
           .call(zoom);
 
         zoom.x(xScale);
+        zoom.y(yScale);
     };
