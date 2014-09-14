@@ -117,7 +117,7 @@ createVis = function() {
     yScale_d = d3.scale.linear().range([bbDetail.h, 0])
     yScale_d.domain([
         d3.min(dataSet[0], function(v) { return v.health; }),
-        d3.max(dataSet[0], function(v) { return v.health; }),
+        d3.max(dataSet[0], function(v) { return v.health; }) + 15000, //increased this factor to avoid cutting off the circle edge of point at top of graph
     ]);
 
     // x, y axes detail
@@ -174,7 +174,17 @@ createVis = function() {
     var points = overview.selectAll(".point")
             .data(dataSet[0])
             .enter().append("circle")
-            .attr("class", "point")
+            .attr("class", function(d){
+                if (d.health == 289843){ //Find the point corresponding to 1st February and give it a special class
+                    return "point special first"
+                }
+                if (d.health == 302149){ //Find the point corresponding to 1st August and give it a special class
+                    return "point special second"
+                }
+                else{
+                    return "point"
+                }
+            })
             .attr("fill", function(d, i) { return  "steelblue"; })
             .attr("cx", function(d, i) { return xScale_o(d.date); })
             .attr("cy", function(d, i) { return yScale_o(d.health); })
@@ -204,7 +214,17 @@ createVis = function() {
     var points_d = detail.selectAll(".point_d")
             .data(dataSet[0])
             .enter().append("circle")
-            .attr("class", "point_d")
+            .attr("class", function(d){
+                if (d.health == 289843){ //Find the point corresponding to 1st February and give it a special class
+                    return "point_d special first"
+                }
+                if (d.health == 302149){ //Find the point corresponding to 1st August and give it a special class
+                    return "point_d special second"
+                }
+                else{
+                    return "point_d"
+                }
+            })
             .attr("clip-path", "url(#clip)") //Adding this attribute says to clip this element
             .attr("fill", function(d, i) { return  "steelblue"; })
             .attr("cx", function(d, i) { return xScale_d(d.date); })
@@ -235,5 +255,59 @@ createVis = function() {
             .attr("cy", function(d) { return yScale_d(d.health); });
         detail.select("g.x.axis.detail").call(xAxis_d);
     }
+
+    //TOOLTIP using jQuery
+
+    //Change the styling of important points
+    overview.selectAll(".special")
+            .attr("r", 5);
+    detail.selectAll(".special")
+            .attr("r", 10);
+    //Create the tooltip
+    var div = d3.select("body").append("div")   
+        .attr("class", "tooltip")               
+        .style("opacity", 0);
+
+    svg.selectAll(".first")
+        .on("mouseover", function(d) {   
+            div.transition()    
+                .style("opacity", .9);      
+            div.html("this happened")  
+                .style("left", (d3.event.pageX) + "px")     
+                .style("top", (d3.event.pageY - 28) + "px");    
+            })                 
+        .on("mouseout", function(d) {       
+            div.transition()        
+                .duration(1000)      
+                .style("opacity", 0)
+            })
+        .on("click", function(d) {
+            //NOTE !! Months start counting from zero
+            xScale_d.domain((+xScale_d.domain()[0] == +xScale_o.domain()[0] && +xScale_d.domain()[1] == +xScale_o.domain()[1]) ? [(new Date(2012, 0, 1)), (new Date(2012, 2, 1))] : xScale_o.domain());
+            brush.extent(xScale_d.domain());
+            overview.select('.brush').call(brush);
+            brushed();
+        })
+
+    svg.selectAll(".second")
+        .on("mouseover", function(d) {   
+            div.transition()    
+                .style("opacity", .9);      
+            div.html("this other thing happened")  
+                .style("left", (d3.event.pageX) + "px")     
+                .style("top", (d3.event.pageY - 28) + "px");    
+            })                 
+        .on("mouseout", function(d) {       
+            div.transition()        
+                .duration(1000)      
+                .style("opacity", 0)
+            })
+        .on("click", function(d) {
+            //NOTE !! Months start counting from zero
+            xScale_d.domain((+xScale_d.domain()[0] == +xScale_o.domain()[0] && +xScale_d.domain()[1] == +xScale_o.domain()[1]) ? [(new Date(2012, 6, 1)), (new Date(2012, 8, 1))] : xScale_o.domain());
+            brush.extent(xScale_d.domain());
+            overview.select('.brush').call(brush);
+            brushed();
+        })
 }
 
